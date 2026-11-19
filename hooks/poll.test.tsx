@@ -15,7 +15,7 @@ const BAND = {
   },
 } as const
 
-const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '' } })
+const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } })
 
 test('a queued run found by gh run list reaches the band', async ($, on) => {
   const calls: string[] = []
@@ -30,11 +30,11 @@ test('a queued run found by gh run list reaches the band', async ($, on) => {
     )
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('clock.every', () => ({ value: 1 }))
+  on('clock.every', () => ({ value: undefined }))
   on('clock.now', () => ({ value: Date.now() }))
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  await new Promise((r) => setTimeout(r, 50))
+  await new Promise((r) => (globalThis as unknown as { setTimeout: (f: () => void, n: number) => void }).setTimeout(() => r(null), 50))
   const ui = await $.ui.mount(BAND)
 
   expect(calls).toContain('gh repo view')
@@ -47,7 +47,7 @@ test('gh missing draws nothing and does not throw', async ($, on) => {
     throw new Error('spawn gh ENOENT')
   })
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('clock.every', () => ({ value: 1 }))
+  on('clock.every', () => ({ value: undefined }))
   on('clock.now', () => ({ value: Date.now() }))
 
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })

@@ -12,6 +12,18 @@ A Claude Code mod that shows your GitHub Actions runs in the band above the prom
 
 ## Install
 
+Desktop app: click + next to the prompt box, then Plugins, Add marketplace with `yanirclsr/gh-actions-mod`, then Add plugin `gh-actions`.
+
+Terminal session:
+
+```
+/plugin install gh-actions --marketplace yanirclsr/gh-actions-mod
+```
+
+Or from a shell: `claude plugin install gh-actions --marketplace yanirclsr/gh-actions-mod`.
+
+Or load it from a folder:
+
 ```bash
 git clone --depth 1 https://github.com/yanirclsr/gh-actions-mod ~/.claude/mods/gh-actions
 ```

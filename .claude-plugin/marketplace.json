@@ -1,0 +1,6 @@
+{
+  "name": "gh-actions-mod",
+  "owner": { "name": "yanirclsr" },
+  "metadata": { "description": "Claude Code mod: GitHub Actions runs above the prompt." },
+  "plugins": [{ "name": "gh-actions", "source": "./" }]
+}
