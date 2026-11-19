@@ -7,6 +7,7 @@ const runsAtom = atom({ plugin: 'gh-actions', key: 'runs' } as const, [])
 const scopeAtom = atom({ plugin: 'gh-actions', key: 'scope' } as const, 'branch')
 const nowAtom = atom({ plugin: 'gh-actions', key: 'now' } as const, 0)
 
+const PANE = 'gh-actions'
 const FAST_MS = 20_000
 const SLOW_MS = 30_000
 const TICK_MS = 5_000
@@ -57,6 +58,24 @@ const parse = (text: string): Raw[] | null => {
   } catch {
     return null
   }
+}
+
+const runLine = (Text: any, r: Run, now: number) => {
+  const done = r.finishedAt > 0
+  const elapsed = done ? r.finishedAt - r.startedAt : now - r.startedAt
+  const status = done ? r.conclusion || 'completed' : r.status
+  const color = !done ? undefined : r.conclusion === 'success' ? 'green' : BAD.has(r.conclusion) ? 'red' : undefined
+  return (
+    <Text key={String(r.id)} color={color}>
+      {r.name} · {r.branch} · {fmtElapsed(elapsed)} · {status}
+    </Text>
+  )
+}
+
+async function toggleScope($: any, scope: Scope, reset: () => void) {
+  reset()
+  await update($, runsAtom, () => [])
+  await update($, scopeAtom, () => (scope === 'branch' ? 'all' : 'branch'))
 }
 
 export const register: Register = (on) => {
@@ -157,7 +176,48 @@ export const register: Register = (on) => {
 
     $.clock.every(TICK_MS, poll)
     void poll()
+
+    // The pane and its command are extras: if either is refused the band and
+    // the polling above still work.
+    try {
+      await $.command.register({ name: 'gh-actions', description: 'Show GitHub Actions runs in a pane' })
+      void $.ui.open({ id: PANE, title: 'GitHub Actions' })
+    } catch {
+      // not available on this surface
+    }
     return next(e)
+  })
+
+  on('command.run', { command: 'gh-actions' }, async ($) => {
+    await $.ui.open({ id: PANE, title: 'GitHub Actions' })
+    return { text: 'GitHub Actions pane opened.' }
+  })
+
+  const resetLive = () => {
+    tracked = new Map()
+    lastPoll = 0
+  }
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    const runs = (await read($, runsAtom)) as Run[]
+    const scope = (await read($, scopeAtom)) as Scope
+    const now = (await read($, nowAtom)) as number
+    const { Box, Button, Text } = $.ui.resolve(e)
+    const room = Math.max(1, (e.viewport?.rows ?? 24) - 4)
+    const ordered = [...runs].sort((a, b) => Number(!!a.finishedAt) - Number(!!b.finishedAt))
+
+    return (
+      <Box flexDirection="column">
+        <Button
+          key="scope"
+          label={scope === 'branch' ? 'this branch' : 'all branches'}
+          onPress={() => toggleScope($, scope, resetLive)}
+        />
+        {ordered.length === 0 && <Text dimColor>No active runs.</Text>}
+        {ordered.slice(0, room).map((r) => runLine(Text, r, now))}
+        {ordered.length > room ? <Text dimColor>+{ordered.length - room} more</Text> : null}
+      </Box>
+    )
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
@@ -172,18 +232,6 @@ export const register: Register = (on) => {
     const more = ordered.length - shown.length
     const { Box, Button, Text } = $.ui.resolve(e)
 
-    const line = (r: Run) => {
-      const done = r.finishedAt > 0
-      const elapsed = done ? r.finishedAt - r.startedAt : now - r.startedAt
-      const status = done ? r.conclusion || 'completed' : r.status
-      const color = !done ? undefined : r.conclusion === 'success' ? 'green' : BAD.has(r.conclusion) ? 'red' : undefined
-      return (
-        <Text key={String(r.id)} color={color}>
-          {r.name} · {r.branch} · {fmtElapsed(elapsed)} · {status}
-        </Text>
-      )
-    }
-
     return (
       <Box flexDirection="column">
         <Box>
@@ -191,15 +239,10 @@ export const register: Register = (on) => {
           <Button
             key="scope"
             label={scope === 'branch' ? 'this branch' : 'all branches'}
-            onPress={async () => {
-              tracked = new Map()
-              lastPoll = 0
-              await update($, runsAtom, () => [])
-              await update($, scopeAtom, () => (scope === 'branch' ? 'all' : 'branch'))
-            }}
+            onPress={() => toggleScope($, scope, resetLive)}
           />
         </Box>
-        {shown.map(line)}
+        {shown.map((r) => runLine(Text, r, now))}
         {more > 0 ? <Text dimColor>+{more} more</Text> : null}
         {below}
       </Box>
