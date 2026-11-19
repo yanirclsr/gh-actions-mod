@@ -1,0 +1,7 @@
+{
+  "name": "gh-actions",
+  "version": "0.1.0",
+  "description": "Shows in-progress and queued GitHub Actions runs for the current repo above the prompt.",
+  "types": "./types/index.d.ts",
+  "license": "MIT"
+}
