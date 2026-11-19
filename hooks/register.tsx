@@ -8,7 +8,7 @@ const scopeAtom = atom({ plugin: 'gh-actions', key: 'scope' } as const, 'branch'
 const nowAtom = atom({ plugin: 'gh-actions', key: 'now' } as const, 0)
 
 const FAST_MS = 20_000
-const SLOW_MS = 120_000
+const SLOW_MS = 30_000
 const TICK_MS = 5_000
 const LINGER_MS = 30_000
 const MAX_ROWS = 3

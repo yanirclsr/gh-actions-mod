@@ -5,7 +5,7 @@ A Claude Code mod that shows your GitHub Actions runs in the band above the prom
 - Shows only `in_progress` and `queued` runs for the current repo, one line each: workflow, branch, elapsed time, status. Up to 3 lines, then "+N more".
 - Filters to the current branch by default. A button in the band switches between "this branch" and "all branches in this repo".
 - Draws nothing when no run is active.
-- Polls every 20 seconds while a run is active and every 2 minutes otherwise.
+- Polls every 20 seconds while a run is active and every 30 seconds otherwise.
 - A finished run stays for 30 seconds with its conclusion. A failed run (failure or timed out) raises a toast with the workflow and branch. Success does not.
 - Read-only: it runs only `gh repo view`, `gh run list`, `gh run view` and `git rev-parse`. It never cancels or reruns anything.
 - If `gh` is missing or not logged in, or the directory is not a git repo, it draws nothing and stays silent.
