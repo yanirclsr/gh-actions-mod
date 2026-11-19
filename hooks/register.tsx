@@ -68,13 +68,20 @@ export const register: Register = (on) => {
   const toasted = new Set<number>()
 
   on('session.start', async ($, e, next) => {
+    // DEBUG (temporary): say that the mod loaded and what each poll did.
+    const note = (t: string) => {
+      $.ui.status(`gh-actions: ${t}`)
+    }
+    $.ui.toast('gh-actions loaded')
+
     const poll = async () => {
       if (polling) return
       polling = true
       try {
         await pollOnce()
-      } catch {
-        // gh missing, not signed in, not a repo: stay silent.
+      } catch (err) {
+        note(`poll error: ${String(err).slice(0, 80)}`)
+        // gh missing, not signed in, not a repo: stay silent in the band.
       } finally {
         polling = false
       }
@@ -92,7 +99,10 @@ export const register: Register = (on) => {
 
       if (!repo) {
         const r = await $.process.run(['gh', 'repo', 'view', '--json', 'nameWithOwner'])
-        if (r.exitCode !== 0) return clear()
+        if (r.exitCode !== 0) {
+          note(`gh repo view failed (exit ${r.exitCode}): ${r.stderr.trim().slice(0, 60)}`)
+          return clear()
+        }
         try {
           repo = JSON.parse(r.stdout).nameWithOwner || null
         } catch {
@@ -105,12 +115,19 @@ export const register: Register = (on) => {
       if (scope === 'branch') {
         const b = await $.process.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
         const branch = b.stdout.trim()
-        if (b.exitCode !== 0 || !branch || branch === 'HEAD') return clear()
+        if (b.exitCode !== 0 || !branch || branch === 'HEAD') {
+          note(`no branch (exit ${b.exitCode}): ${b.stderr.trim().slice(0, 60)}`)
+          return clear()
+        }
         args.push('--branch', branch)
       }
       const res = await $.process.run(args)
       const list = res.exitCode === 0 ? parse(res.stdout) : null
-      if (!list) return clear()
+      if (!list) {
+        note(`gh run list failed (exit ${res.exitCode}): ${res.stderr.trim().slice(0, 60)}`)
+        return clear()
+      }
+      note(`${list.length} runs seen on ${scope === 'branch' ? 'this branch' : 'all branches'}, repo ${repo}`)
 
       const byId = new Map(list.map((r) => [r.databaseId, toRun(r)]))
       const fresh = new Map<number, Run & { seenDone: number }>()
